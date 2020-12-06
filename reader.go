@@ -20,7 +20,7 @@ type Reader struct {
 // NewReader creates a new Reader on the given object.
 // Callers must call the Close method when finished with the Reader.
 func NewReader(ctx context.Context, obj *storage.ObjectHandle) (*Reader, error) {
-	attrs, err := obj.Attrs()
+	attrs, err := obj.Attrs(ctx)
 	return &Reader{
 		ctx:  ctx,
 		obj:  obj,
