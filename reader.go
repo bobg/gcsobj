@@ -21,11 +21,14 @@ type Reader struct {
 // Callers must call the Close method when finished with the Reader.
 func NewReader(ctx context.Context, obj *storage.ObjectHandle) (*Reader, error) {
 	attrs, err := obj.Attrs(ctx)
+	if err != nil {
+		return nil, err
+	}
 	return &Reader{
 		ctx:  ctx,
 		obj:  obj,
 		size: attrs.Size,
-	}, err
+	}, nil
 }
 
 // Read implements io.Reader.
