@@ -5,16 +5,18 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"sync/atomic"
 
 	"cloud.google.com/go/storage"
 )
 
 // Reader is an io.ReadSeeker for objects in Google Cloud Storage buckets.
 type Reader struct {
-	ctx              context.Context
-	obj              *storage.ObjectHandle
-	r                *storage.Reader
-	pos, size, nread int64
+	ctx       context.Context
+	obj       *storage.ObjectHandle
+	r         *storage.Reader
+	pos, size int64
+	nread     int64 // Read/write with atomic
 }
 
 // NewReader creates a new Reader on the given object.
@@ -45,7 +47,7 @@ func (r *Reader) Read(dest []byte) (int, error) {
 	}
 	n, err := r.r.Read(dest)
 	r.pos += int64(n)
-	r.nread += int64(n)
+	atomic.AddInt64(&r.nread, int64(n))
 	return n, err
 }
 
@@ -81,6 +83,7 @@ func (r *Reader) Close() error {
 }
 
 // NRead reports the number of bytes that have been read from Reader.
+// This is safe to call concurrently with Read.
 func (r *Reader) NRead() int64 {
-	return r.nread
+	return atomic.LoadInt64(&r.nread)
 }
