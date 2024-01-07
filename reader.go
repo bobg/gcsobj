@@ -12,7 +12,11 @@ import (
 
 // Reader is an io.ReadSeeker for objects in Google Cloud Storage buckets.
 type Reader struct {
-	ctx       context.Context
+	// Embedding a context in a data structure is an antipattern,
+	// except when needed to satisfy interfaces (like io.ReadSeeker) that don't permit passing a context.
+	// See https://go.dev/wiki/CodeReviewComments#contexts
+	ctx context.Context
+
 	obj       *storage.ObjectHandle
 	r         *storage.Reader
 	pos, size int64
@@ -20,17 +24,26 @@ type Reader struct {
 }
 
 // NewReader creates a new Reader on the given object.
+// If the object size is already known, use [NewReaderWithSize] instead.
 // Callers must call the Close method when finished with the Reader.
 func NewReader(ctx context.Context, obj *storage.ObjectHandle) (*Reader, error) {
 	attrs, err := obj.Attrs(ctx)
 	if err != nil {
 		return nil, err
 	}
+	return NewReaderWithSize(ctx, obj, attrs.Size), nil
+}
+
+// NewReaderWithSize creates a new Reader on the given object.
+// Use this in preference to [NewReader] when the object size is already known
+// (e.g. from an earlier call to [storage.ObjectHandle.Attrs]).
+// Callers must call the Close method when finished with the Reader.
+func NewReaderWithSize(ctx context.Context, obj *storage.ObjectHandle, size int64) *Reader {
 	return &Reader{
 		ctx:  ctx,
 		obj:  obj,
-		size: attrs.Size,
-	}, nil
+		size: size,
+	}
 }
 
 // Read implements io.Reader.
