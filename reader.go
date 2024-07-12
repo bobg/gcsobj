@@ -66,20 +66,29 @@ func (r *Reader) Read(dest []byte) (int, error) {
 
 // Seek implements io.Seeker.
 func (r *Reader) Seek(offset int64, whence int) (int64, error) {
-	err := r.Close()
-	if err != nil {
-		return 0, err
-	}
+	var newPos int64
 
 	switch whence {
 	case io.SeekStart:
-		r.pos = offset
+		newPos = offset
 	case io.SeekCurrent:
-		r.pos += offset
+		newPos += offset
 	case io.SeekEnd:
-		r.pos = r.size + offset
+		newPos = r.size + offset
 	default:
 		return 0, fmt.Errorf("illegal whence value %d", whence)
+	}
+
+	if r.r != nil && r.pos == newPos {
+		// Optimization: don't close and reopen the reader if we're already at the desired position.
+		return r.pos, nil
+	}
+
+	r.pos = newPos
+
+	err := r.Close()
+	if err != nil {
+		return 0, err
 	}
 
 	return r.pos, nil
